@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Feedback Operacional — Pronto para WhatsApp</title>
+
+<style>
+  /* (mantive exatamente o mesmo CSS que você enviou) */
+  :root{
+    --bg:#0f1724; --card:#0b1220; --muted:#9aa5b1; --accent:#0ea5a4;
+    --ok:#10b981; --warn:#f59e0b; --danger:#ef4444; --glass:rgba(255,255,255,0.03);
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,sans-serif;}
+  body{background:linear-gradient(180deg,#071127 0%, #041226 100%);color:#e6eef6;display:flex;align-items:flex-start;justify-content:center;padding:24px;}
+  .container{max-width:920px;width:100%;}
+  .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 24px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03);}
+  header{display:flex;gap:12px;align-items:center;margin-bottom:12px;}
+  header h1{font-size:18px;margin:0;}
+  header p{margin:0;color:var(--muted);font-size:13px;}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  button, .btn {background:var(--glass); color:var(--accent); border:1px solid rgba(255,255,255,0.03); padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;}
+  .btn.primary{background:linear-gradient(90deg,#064e52,#087f7d); color:white; border:none;}
+  .btn.ghost{background:transparent;border:1px dashed rgba(255,255,255,0.04);color:var(--muted);}
+  textarea{width:100%;min-height:320px;border-radius:8px;padding:12px;background:#071426;color:#e6eef6;border:1px solid rgba(255,255,255,0.03);font-family:ui-monospace;resize:vertical;line-height:1.45}
+  .preview{margin-top:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);font-size:14px;color:var(--muted);}
+  .row{display:flex;gap:8px;align-items:center;}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="card">
+
+    <header>
+      <div style="flex:1">
+        <h1>Gerador de Feedback DEP</h1>
+        <p>Selecione a data e gere o feedback automaticamente.</p>
+      </div>
+    </header>
+
+    <div class="controls">
+
+      <!-- 🔥 NOVO CAMPO DE DATA -->
+      <input type="date" id="dataInput" class="btn" style="padding:8px;">
+
+      <!-- 🔥 NOVO BOTÃO GERAR FEEDBACK -->
+      <button class="btn primary" id="btnGerar">Gerar Feedback</button>
+
+      <button class="btn" id="btnCopyPlain">Copiar texto (WhatsApp)</button>
+      <button class="btn" id="btnOpenWa">Abrir WhatsApp</button>
+      <button class="btn ghost" id="btnDownload">Baixar .txt</button>
+      <button class="btn" id="btnClear">Limpar</button>
+    </div>
+
+    <textarea id="feedback_raw" placeholder="O feedback aparecerá aqui..."></textarea>
+    <div id="preview" class="preview"></div>
+
+  </div>
+</div>
+
+
+<script>
+  const ta = document.getElementById("feedback_raw");
+  const preview = document.getElementById("preview");
+
+  async function gerarFeedbackComData() {
+    const dataSelecionada = document.getElementById("dataInput").value;
+
+    if (!dataSelecionada) {
+      alert("Selecione uma data.");
+      return;
+    }
+
+    const url = `http://localhost:8000/feedback?data=${dataSelecionada}`;
+
+    ta.value = "⏳ Carregando...";
+    preview.innerHTML = "Carregando...";
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      ta.value = data.feedback;
+      renderPreview(data.feedback);
+
+    } catch (err) {
+      ta.value = "❌ Erro ao conectar com a API.";
+    }
+  }
+
+  function renderPreview(text){
+    let html = text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>");
+    preview.innerHTML = html;
+  }
+
+  // ligar botões
+  document.getElementById("btnGerar").addEventListener("click", gerarFeedbackComData);
+
+  document.getElementById("btnCopyPlain").onclick = async ()=> {
+    await navigator.clipboard.writeText(ta.value);
+    alert("Copiado!");
+  };
+
+  document.getElementById("btnOpenWa").onclick = ()=> {
+    const encoded = encodeURIComponent(ta.value);
+    window.open(`https://wa.me/?text=${encoded}`, "_blank");
+  };
+
+  document.getElementById("btnDownload").onclick = ()=> {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([ta.value], {type:"text/plain"}));
+    a.download = "feedback.txt";
+    a.click();
+  };
+
+  document.getElementById("btnClear").onclick = ()=> {
+    ta.value = "";
+    preview.innerHTML = "";
+  };
+
+  ta.addEventListener("input", ()=> renderPreview(ta.value));
+
+</script>
+
+</body>
+</html>
