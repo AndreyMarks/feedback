@@ -1,7 +1,6 @@
 fastapi
 uvicorn[standard]
 gunicorn
-
 pandas
 gspread
 google-auth
