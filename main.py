@@ -32,7 +32,11 @@ def carregar_dep():
         "https://www.googleapis.com/auth/drive"
     ]
 
-    creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
+    import os
+    
+    SERVICE_ACCOUNT_FILE = "/etc/secrets/credentials.json"  # coloque o nome correto
+    
+    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=scope)
     gc = gspread.authorize(creds)
 
     # Abrir pelo ID da planilha
