@@ -2,15 +2,10 @@ fastapi
 uvicorn[standard]
 gunicorn
 
-# Google Sheets
+pandas
 gspread
-oauth2client
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
-
-pandas
-
-# Upload de formulários
 python-multipart
