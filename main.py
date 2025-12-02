@@ -75,19 +75,8 @@ def carregar_sheet(sheet_name: str) -> pd.DataFrame:
     global _cache
     agora = time.time()
 
-    # primeira carga
-    if _cache[sheet_name]["df"] is None:
-        df = baixar_planilha(sheet_name)
-
-        if sheet_name == "DEP" and "FLIGTH ATD" in df.columns:
-            df["FLIGTH ATD"] = pd.to_datetime(df["FLIGTH ATD"], dayfirst=True, errors="coerce")
-
-        _cache[sheet_name]["df"] = df
-        _cache[sheet_name]["last"] = agora
-        return df
-
-    # recarregar se expirou
-    if agora - _cache[sheet_name]["last"] > CACHE_TIME_SECONDS:
+    # primeira carga ou cache expirado
+    if _cache[sheet_name]["df"] is None or (agora - _cache[sheet_name]["last"] > CACHE_TIME_SECONDS):
         try:
             df = baixar_planilha(sheet_name)
             if sheet_name == "DEP" and "FLIGTH ATD" in df.columns:
@@ -95,11 +84,17 @@ def carregar_sheet(sheet_name: str) -> pd.DataFrame:
 
             _cache[sheet_name]["df"] = df
             _cache[sheet_name]["last"] = agora
+
+            # 🔹 resetar cache de resultados processados se TMA
+            if sheet_name == "TMA":
+                _cache["TMA"]["resultados"] = {}
+
             return df
         except Exception as e:
             print(f"❌ Erro ao atualizar sheet {sheet_name}, usando cache antigo:", e)
 
     return _cache[sheet_name]["df"]
+
 
 
 # ------------------------------------------------------

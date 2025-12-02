@@ -104,7 +104,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
                 ("VOADO SEM MAN", "📄", "Guias sem manifesto"),
                 ("ERRO SCORECARD", "📉", "Erro de Scorecard"),
                 ("PERCA", "⛔", "Perda de DEP"),
-                ("GUIA COM IRR", "❌", "Guias com IRR"),
+                ("GUIAS COM IRR", "❌", "Guias com IRR"),
                 ("ONHAND", "❌", "ONHAND"),
                 ("CORTE", "✂️", "CORTE"),
                 ("RCF DUPLICADO", "🔁", "RCF duplicado"),
