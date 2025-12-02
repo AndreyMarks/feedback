@@ -5,6 +5,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
     """
     Feedback operacional compatível Colab/Render/DEP.
     Percentual apenas no topo do desvio por turno.
+    Inclui CHAMADOS (PCNLAT) e Top 3 desvios gerais.
     """
 
     # 🔥 NORMALIZAÇÃO UNIVERSAL
@@ -39,10 +40,34 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
 
     # Totais gerais
     total_guias = len(df)
-
     feedback += f"📉 Total de guias analisadas: **{total_guias}**\n\n"
 
-    # Resumo por turno
+    # ---------------------- CHAMADOS ----------------------
+    chamados = df[col_obs].astype(str).str.strip()
+    chamados = chamados[chamados.str.startswith("PCNLAT")]
+    if not chamados.empty:
+        feedback += "📞 CHAMADOS:\n"
+        for c in chamados.unique():
+            feedback += f"- {c}\n"
+        feedback += "\n"
+
+    # ---------------------- TOP 3 DESVIOS GERAIS ----------------------
+    if "VOO" in df.columns:
+        top_desvios = (
+            df.groupby(["DETALHE DESVIO", "VOO"])
+              .size()
+              .reset_index(name="QTD")
+              .sort_values("QTD", ascending=False)
+              .head(3)
+        )
+
+        feedback += "🏆 Top 3 desvios (todos os turnos):\n"
+        for _, row in top_desvios.iterrows():
+            perc = (row["QTD"] / total_guias * 100) if total_guias else 0
+            feedback += f"- {row['DETALHE DESVIO'].upper()} | {row['VOO']} → **{row['QTD']} guias** ({perc:.1f}%)\n"
+        feedback += "\n"
+
+    # ---------------------- RESUMO POR TURNO ----------------------
     if "TURNO" in df.columns:
         ordem_turnos = ["MANHÃ", "TARDE", "MADRUGADA"]
 
