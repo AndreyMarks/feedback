@@ -4,12 +4,19 @@ from datetime import datetime, timedelta
 def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
     """
     Versão DEFINITIVA com nome exato da coluna de observações.
-    100% igual ao funcionamento do Colab.
+    100% igual ao funcionamento do Colab — agora também no Render.
     """
+
+    # ======================================================
+    # 🔥 NORMALIZAÇÃO UNIVERSAL (Render / CSV / Sheets)
+    # Garante que "", " ", None, NaN, "nan" virem "-"
+    # ======================================================
+    df = df.replace([None, "None", "nan", "NaN"], "")
+    df = df.applymap(lambda x: "-" if str(x).strip() == "" else x)
 
     # ---------------------- DATA ----------------------
     if data_extracao is None:
-        data_extracao = datetime.now() - timedelta(days=3)
+        data_extracao = datetime.now() - timedelta(days=2)
     data_extracao = pd.to_datetime(data_extracao).strftime("%d/%m/%Y")
 
     # ---------------------- COLUNA DE OBSERVAÇÕES ----------------------
@@ -39,7 +46,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
 
     # ---------------------- TOP VOOS ----------------------
     if "VOO" in df.columns:
-        top_voos = df["VOO"].value_counts().head(2)
+        top_voos = df["VOO"].value_counts().head(3)
         feedback += "✈️ Voos mais impactados do dia:\n"
         for voo, qtd in top_voos.items():
             feedback += f"- {voo}: **{qtd} guias**\n"
@@ -61,7 +68,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
         if col_obs not in df_grupo.columns:
             return " - "
         obs = df_grupo[col_obs].astype(str).str.strip()
-        obs = obs[~obs.str.lower().isin(["nan", "", "none"])]
+        obs = obs[~obs.isin(["-", "", "nan", "None"])]
         if obs.empty:
             return " - "
         return " --> " + " | ".join(obs.unique())
@@ -103,11 +110,11 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
                 if grupo.empty:
                     continue
 
-                # Observações aqui (aparecem 1 vez)
+                # Observações agrupadas (agora FUNCIONA no Render)
                 obs_txt = obs_agrupadas(grupo)
                 feedback += f"{emoji} {titulo} ({len(grupo)} guias): {obs_txt}\n"
 
-                # Agrupamento por voo/destino sem observar — apenas "-"
+                # Agrupamento por voo/destino
                 for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
                     feedback += f"✈️ {voo} → {dest} → **{len(g)} guias**  -\n"
 
