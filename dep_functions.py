@@ -105,7 +105,9 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
                 grupo = bloco[bloco["DETALHE DESVIO"].str.contains(tipo, case=False, na=False)]
 
                 if not grupo.empty:
-                    feedback += f"{emoji} *{titulo} ({len(grupo)} guia(s))*\n"
+                    obs_txt = obs_agrupadas(grupo)
+                    feedback += f"{emoji} *{titulo} ({len(grupo)} guia(s))* {obs_txt}\n"
+
 
                     # Agrupamento por voo + destino
                     for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
