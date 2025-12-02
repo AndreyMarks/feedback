@@ -242,7 +242,17 @@ def analisar_tma_por_data(df: pd.DataFrame, data_str: str):
     if base.empty:
         return {"texto": f"Nenhuma senha encontrada para {data_str}."}
 
-    motivo_col = "DETALHE DESVIO" if "DETALHE DESVIO" in base.columns else None
+    # =======================
+    #  DETECTAR COLUNA MOTIVO
+    # =======================
+    motivo_col = None
+    for col in base.columns:
+        if col.replace(" ", "").replace("_", "") == "DETALHEDESVIO":
+            motivo_col = col
+            break
+
+    if motivo_col is None:
+        raise HTTPException(500, "Coluna DETALHE DESVIO não encontrada no sheet TMA")
 
     base["MOTIVO"] = base[motivo_col].astype(str).str.upper().str.strip()
     base["CLASSIFICACAO"] = base["MOTIVO"].apply(
@@ -274,6 +284,7 @@ def analisar_tma_por_data(df: pd.DataFrame, data_str: str):
         texto += f"{i}️⃣ {motivo.title()} — {qtd}\n"
 
     return {"texto": texto}
+
 
 
 @app.get("/tma")
