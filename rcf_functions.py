@@ -10,7 +10,6 @@ _cache_rcf = {
 }
 CACHE_TIME_SECONDS = 300  # 5 minutos
 
-
 def carregar_rcf_sheet(sheet_name: str, service_account_file: str, sheet_key: str):
     import gspread
     from google.oauth2.service_account import Credentials
@@ -34,7 +33,6 @@ def carregar_rcf_sheet(sheet_name: str, service_account_file: str, sheet_key: st
         _cache_rcf["last"] = agora
         _cache_rcf["resultados"] = {}  # resetar cache de resultados
     return _cache_rcf["df"]
-
 
 def analisar_rcf_por_data(df: pd.DataFrame, data_filtrar: str):
     """
@@ -99,3 +97,7 @@ def analisar_rcf_por_data(df: pd.DataFrame, data_filtrar: str):
 """
     _cache_rcf["resultados"][data_filtrar] = feedback
     return feedback
+
+# 🔹 Função wrapper para compatibilidade com main.py
+def gerar_feedback_rcf(df: pd.DataFrame, data_str: str):
+    return analisar_rcf_por_data(df, data_str)
