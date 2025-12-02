@@ -111,14 +111,17 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
                 if grupo.empty:
                     continue
 
-                # Observações agrupadas
-                obs_txt = obs_agrupadas(grupo)
-                feedback += f"{emoji} {titulo} ({len(grupo)} guias): {obs_txt}\n"
+                # Observações agrupadas por voo/destino
+                feedback += f"{emoji} {titulo} ({len(grupo)} guias):\n"
 
-                # Agrupamento por voo/destino
                 if "VOO" in grupo.columns and "DESTINO" in grupo.columns:
                     for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
-                        feedback += f"✈️ {voo} → {dest} → **{len(g)} guias**  -\n"
+                        # Pega observações únicas do grupo
+                        obs_txt = g[col_obs].astype(str).str.strip()
+                        obs_txt = obs_txt[~obs_txt.isin(["-", "", "nan", "None"])]
+                        obs_str = " - " if obs_txt.empty else " --> " + " | ".join(obs_txt.unique())
+
+                        feedback += f"✈️ {voo} → {dest} → **{len(g)} guias** {obs_str}\n"
 
                 feedback += "\n"
 
