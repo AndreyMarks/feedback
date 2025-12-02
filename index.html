@@ -105,7 +105,8 @@
     let feedback =
       typeof result === "string"
         ? result
-        : result.feedback ?? "❌ Erro na API";
+        : result.feedback || result.texto || "❌ Erro na API";
+
 
     ta.value = feedback;
     preview.innerHTML = feedback.replace(/\n/g, "<br>");
