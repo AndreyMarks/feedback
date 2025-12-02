@@ -3,10 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Feedback Operacional — Pronto para WhatsApp</title>
+<title>Gerador de Feedback</title>
 
 <style>
-  /* (mantive exatamente o mesmo CSS que você enviou) */
   :root{
     --bg:#0f1724; --card:#0b1220; --muted:#9aa5b1; --accent:#0ea5a4;
     --ok:#10b981; --warn:#f59e0b; --danger:#ef4444; --glass:rgba(255,255,255,0.03);
@@ -24,7 +23,6 @@
   .btn.ghost{background:transparent;border:1px dashed rgba(255,255,255,0.04);color:var(--muted);}
   textarea{width:100%;min-height:320px;border-radius:8px;padding:12px;background:#071426;color:#e6eef6;border:1px solid rgba(255,255,255,0.03);font-family:ui-monospace;resize:vertical;line-height:1.45}
   .preview{margin-top:12px;background:rgba(255,255,255,0.02);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);font-size:14px;color:var(--muted);}
-  .row{display:flex;gap:8px;align-items:center;}
 </style>
 </head>
 
@@ -34,23 +32,28 @@
 
     <header>
       <div style="flex:1">
-        <h1>Gerador de Feedback DEP</h1>
-        <p>Selecione a data e gere o feedback automaticamente.</p>
+        <h1 id="titulo">Gerador de Feedback DEP/TMA</h1>
+        <p>Selecione o tipo, escolha a data e gere automaticamente.</p>
       </div>
     </header>
 
     <div class="controls">
 
-      <!-- 🔥 NOVO CAMPO DE DATA -->
+      <!-- 🔥 NOVO SELECT DEP/TMA -->
+      <select id="tipoInput" class="btn" style="padding:8px;">
+        <option value="dep">DEP</option>
+        <option value="tma">TMA</option>
+      </select>
+
       <input type="date" id="dataInput" class="btn" style="padding:8px;">
 
-      <!-- 🔥 NOVO BOTÃO GERAR FEEDBACK -->
-      <button class="btn primary" id="btnGerar">Gerar Feedback</button>
+      <button class="btn primary" id="btnGerar">Gerar</button>
 
-      <button class="btn" id="btnCopyPlain">Copiar texto (WhatsApp)</button>
-      <button class="btn" id="btnOpenWa">Abrir WhatsApp</button>
+      <button class="btn" id="btnCopyPlain">Copiar</button>
+      <button class="btn" id="btnOpenWa">WhatsApp</button>
       <button class="btn ghost" id="btnDownload">Baixar .txt</button>
       <button class="btn" id="btnClear">Limpar</button>
+
     </div>
 
     <textarea id="feedback_raw" placeholder="O feedback aparecerá aqui..."></textarea>
@@ -61,67 +64,69 @@
 
 
 <script>
-  const ta = document.getElementById("feedback_raw");
-  const preview = document.getElementById("preview");
 
-  async function gerarFeedbackComData() {
-    const dataSelecionada = document.getElementById("dataInput").value;
+  async function gerar() {
+    const tipo = document.getElementById("tipoInput").value; // dep ou tma
+    const data = document.getElementById("dataInput").value;
 
-    if (!dataSelecionada) {
+    if (!data) {
       alert("Selecione uma data.");
       return;
     }
 
-  const url = `https://feedback-81uq.onrender.com/feedback?data=${dataSelecionada}`;
+    let url = "";
+
+    if (tipo === "dep") {
+      url = `https://feedback-81uq.onrender.com/feedback?data=${data}`;
+      document.getElementById("titulo").innerText = "Gerador de Feedback DEP";
+    }
+    else {
+      url = `https://feedback-81uq.onrender.com/tma?data=${data}`;
+      document.getElementById("titulo").innerText = "Gerador de Análise TMA";
+    }
+
+    const ta = document.getElementById("feedback_raw");
+    const preview = document.getElementById("preview");
 
     ta.value = "⏳ Carregando...";
     preview.innerHTML = "Carregando...";
 
     try {
       const res = await fetch(url);
-      const data = await res.json();
+      const dataJson = await res.json();
 
-      ta.value = data.feedback;
-      renderPreview(data.feedback);
+      ta.value = dataJson.feedback || "❌ Erro na API";
+      preview.innerHTML = ta.value.replace(/\n/g, "<br>");
 
-    } catch (err) {
-      ta.value = "❌ Erro ao conectar com a API.";
+    } catch (e) {
+      ta.value = "❌ Erro ao conectar com a API";
     }
   }
 
-  function renderPreview(text){
-    let html = text
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\n/g, "<br>");
-    preview.innerHTML = html;
-  }
+  document.getElementById("btnGerar").onclick = gerar;
 
-  // ligar botões
-  document.getElementById("btnGerar").addEventListener("click", gerarFeedbackComData);
-
-  document.getElementById("btnCopyPlain").onclick = async ()=> {
-    await navigator.clipboard.writeText(ta.value);
+  document.getElementById("btnCopyPlain").onclick = async ()=>{
+    await navigator.clipboard.writeText(document.getElementById("feedback_raw").value);
     alert("Copiado!");
   };
 
-  document.getElementById("btnOpenWa").onclick = ()=> {
-    const encoded = encodeURIComponent(ta.value);
-    window.open(`https://wa.me/?text=${encoded}`, "_blank");
+  document.getElementById("btnOpenWa").onclick = ()=>{
+    const txt = encodeURIComponent(document.getElementById("feedback_raw").value);
+    window.open(`https://wa.me/?text=${txt}`);
   };
 
-  document.getElementById("btnDownload").onclick = ()=> {
+  document.getElementById("btnDownload").onclick = ()=>{
+    const txt = document.getElementById("feedback_raw").value;
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([ta.value], {type:"text/plain"}));
+    a.href = URL.createObjectURL(new Blob([txt]));
     a.download = "feedback.txt";
     a.click();
   };
 
-  document.getElementById("btnClear").onclick = ()=> {
-    ta.value = "";
-    preview.innerHTML = "";
+  document.getElementById("btnClear").onclick = ()=>{
+    document.getElementById("feedback_raw").value = "";
+    document.getElementById("preview").innerHTML = "";
   };
-
-  ta.addEventListener("input", ()=> renderPreview(ta.value));
 
 </script>
 
