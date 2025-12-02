@@ -92,11 +92,24 @@
     preview.innerHTML = "Carregando...";
 
     try {
-      const res = await fetch(url);
-      const dataJson = await res.json();
+    const res = await fetch(url);
 
-      ta.value = dataJson.feedback || "❌ Erro na API";
-      preview.innerHTML = ta.value.replace(/\n/g, "<br>");
+    // tenta JSON → se falhar, usa texto
+    let result;
+    try {
+      result = await res.json();
+    } catch {
+      result = await res.text();
+    }
+
+    let feedback =
+      typeof result === "string"
+        ? result
+        : result.feedback ?? "❌ Erro na API";
+
+    ta.value = feedback;
+    preview.innerHTML = feedback.replace(/\n/g, "<br>");
+
 
     } catch (e) {
       ta.value = "❌ Erro ao conectar com a API";
