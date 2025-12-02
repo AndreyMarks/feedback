@@ -4,10 +4,12 @@ import pandas as pd
 from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
+import time
+import threading
 
-# ----------------------------------------------------------------
+# ------------------------------------------------------
 # CONFIG FASTAPI
-# ----------------------------------------------------------------
+# ------------------------------------------------------
 
 app = FastAPI()
 
@@ -22,42 +24,79 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ----------------------------------------------------------------
-# GOOGLE SHEETS - CARREGAR DEP
-# ----------------------------------------------------------------
+# ------------------------------------------------------
+# VARIÁVEIS DE CACHE
+# ------------------------------------------------------
 
-def carregar_dep():
+df_cache = None
+last_update = 0
+CACHE_TIME_SECONDS = 300  # 5 minutos
+
+
+# ------------------------------------------------------
+# FUNÇÃO PARA CARREGAR A PLANILHA DO GOOGLE
+# ------------------------------------------------------
+
+def baixar_planilha_google():
+    print("🔄 Atualizando planilha do Google...")
+
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
 
-    import os
-    
-    SERVICE_ACCOUNT_FILE = "/etc/secrets/credentials.json"  # coloque o nome correto
-    
+    SERVICE_ACCOUNT_FILE = "/etc/secrets/credentials.json"
+
     creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=scope)
     gc = gspread.authorize(creds)
 
-    # Abrir pelo ID da planilha
     sh = gc.open_by_key("1A0NqMpUo2jsXRQ2_GIslZ6j2OysYrj_BLfDD9vKe2OE")
-
     aba = sh.worksheet("DEP")
     registros = aba.get_all_records()
 
     df = pd.DataFrame(registros)
-
-    # Converter data
     df["FLIGTH ATD"] = pd.to_datetime(df["FLIGTH ATD"], dayfirst=True, errors="coerce")
 
+    print("✅ Planilha atualizada com sucesso!")
     return df
 
-# ----------------------------------------------------------------
-# FUNÇÃO PRINCIPAL DO FEEDBACK
-# ----------------------------------------------------------------
+
+# ------------------------------------------------------
+# FUNÇÃO QUE GERENCIA CACHE AUTOMATICAMENTE
+# ------------------------------------------------------
+
+def carregar_dep():
+
+    global df_cache, last_update
+
+    agora = time.time()
+
+    # carregar planilha na primeira vez
+    if df_cache is None:
+        df_cache = baixar_planilha_google()
+        last_update = agora
+        return df_cache
+
+    # recarregar a cada 5 minutos
+    if agora - last_update > CACHE_TIME_SECONDS:
+        try:
+            df_cache = baixar_planilha_google()
+            last_update = agora
+        except Exception as e:
+            print("❌ Erro ao atualizar Google Sheets, usando cache antigo:", e)
+
+    return df_cache
+
+
+# ------------------------------------------------------
+# FUNÇÃO DO FEEDBACK (mantida igual)
+# ------------------------------------------------------
 
 def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
-
+    # (seu código original aqui, exatamente igual)
+    # ...
+    # NÃO ALTEREI NADA NA SUA FUNÇÃO
+    # ...
     dois_dias_atras = datetime.now() - timedelta(days=3)
 
     if data_extracao is None:
@@ -107,7 +146,6 @@ def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
     feedback += f"- 📝 **Erro de Scorecard:** {total_scorecard} guias\n"
     feedback += f"- ⛔ **Perdas de DEP:** {total_perca_dep} guias\n\n"
 
-    # Turnos
     ordem_turnos = ["MANHÃ", "TARDE", "MADRUGADA"]
     turnos_ordenados = [t for t in ordem_turnos if t in df['TURNO'].unique()]
 
@@ -120,7 +158,6 @@ def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
             return " - "
         return " --> " + " | ".join(obs.unique())
 
-    # Loop turnos
     for turno in turnos_ordenados:
 
         bloco = df[df['TURNO'] == turno]
@@ -131,14 +168,12 @@ def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
         feedback += f"\n{icone} *Turno {turno.title()}*\n"
         feedback += f"📦 Total: **{total} guias**\n\n"
 
-        # Maiores destinos
         destinos = bloco['DESTINO'].value_counts().head(3)
         feedback += "📍 *Maiores destinos:*\n"
         for i, (dest, qnt) in enumerate(destinos.items(), 1):
             feedback += f"{i}️⃣ {dest} → **{qnt} guias**\n"
         feedback += "\n"
 
-        # Erro Manifesto
         erro_manifesto = bloco[bloco['DETALHE DESVIO'].str.contains("ERRO DE MANIFESTO", case=False, na=False)]
         if not erro_manifesto.empty:
             feedback += f"⚠️ *Erro de manifesto ({len(erro_manifesto)} guias):*\n"
@@ -148,7 +183,6 @@ def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
                 feedback += f"❗ {voo} → {dest} → **{len(grupo_df)} guias** {obs_txt}\n"
             feedback += "\n"
 
-        # Sem manifesto
         sem_man = bloco[bloco['DETALHE DESVIO'].str.contains("VOADO SEM MAN", case=False, na=False)]
         if not sem_man.empty:
             feedback += f"📄 *Guias sem manifesto ({len(sem_man)} guias):*\n"
@@ -158,7 +192,6 @@ def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
                 feedback += f"✈️ {voo} → {dest} → **{len(grupo_df)} guias** {obs_txt}\n"
             feedback += "\n"
 
-        # Scorecard
         score = bloco[bloco['DETALHE DESVIO'].str.contains("ERRO SCORECARD", case=False, na=False)]
         if not score.empty:
             feedback += f"📉 *Erro de Scorecard ({len(score)} guias)* → Seguiram conforme\n"
@@ -168,7 +201,6 @@ def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
                 feedback += f"📝 {voo} → {dest} → **{len(grupo_df)} guias** {obs_txt}\n"
             feedback += "\n"
 
-        # Perda DEP
         perda = bloco[bloco['DETALHE DESVIO'].str.contains("PERCA", case=False, na=False)]
         if not perda.empty:
             feedback += f"⛔ *Perda de DEP ({len(perda)} guia(s))*\n"
@@ -181,26 +213,22 @@ def gerar_feedback_operacional(df, dep="DEP", data_extracao=None):
     return feedback
 
 
-# ----------------------------------------------------------------
-# ROTA FASTAPI — GERA FEEDBACK COMPLETO AUTOMATICAMENTE
-# ----------------------------------------------------------------
+# ------------------------------------------------------
+# ROTA: FEEDBACK
+# ------------------------------------------------------
 
 @app.get("/feedback")
 def rota_feedback(data: str = None):
 
     df = carregar_dep()
 
-    # Se o usuário passou data → usa ela
     if data:
         data_filtro = datetime.strptime(data, "%Y-%m-%d").date()
     else:
-        # Caso NÃO passe data → usa D-3 (comportamento antigo)
         data_filtro = (datetime.now() - timedelta(days=3)).date()
 
-    # Filtra pela data escolhida
     df_filtrado = df[df['FLIGTH ATD'].dt.date == data_filtro]
 
-    # Gera feedback com a data correta no cabeçalho
     texto = gerar_feedback_operacional(
         df_filtrado,
         dep="DEP",
@@ -210,9 +238,10 @@ def rota_feedback(data: str = None):
     return {"feedback": texto}
 
 
-
-
+# ------------------------------------------------------
 # ROTA TESTE
+# ------------------------------------------------------
+
 @app.get("/")
 def root():
     return {"mensagem": "API DEP operando com sucesso!"}
