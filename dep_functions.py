@@ -42,12 +42,18 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
     total_guias = len(df)
     feedback += f"📉 Total de guias analisadas: **{total_guias}**\n\n"
 
+    import re
+
     # ---------------------- CHAMADOS ----------------------
-    chamados = df[col_obs].astype(str).str.strip()
-    # Filtra apenas os que começam com PCNLAT
-    chamados = chamados[chamados.str.upper().str.startswith("PCNLAT")]
-    # Remove duplicatas
-    chamados = chamados.drop_duplicates()
+    # Pega todas as células da coluna de observações
+    obs_texto = df[col_obs].astype(str).str.strip()
+    # Extrai todos os padrões PCNLAT-xxxxxxx
+    chamados = obs_texto.apply(lambda x: re.findall(r"PCNLAT-\d+", x.upper()))
+    # Desempacota a lista em várias linhas
+    chamados = pd.Series([c for sublist in chamados for c in sublist])
+    # Remove duplicatas e ordena
+    chamados = chamados.drop_duplicates().sort_values()
+    # Adiciona ao feedback
     if not chamados.empty:
         feedback += "📞 CHAMADOS:\n"
         for c in chamados:
