@@ -32,23 +32,22 @@
 
     <header>
       <div style="flex:1">
-        <h1 id="titulo">Gerador de Feedback DEP/TMA</h1>
+        <h1 id="titulo">Gerador de Feedback DEP/TMA/RCF</h1>
         <p>Selecione o tipo, escolha a data e gere automaticamente.</p>
       </div>
     </header>
 
     <div class="controls">
 
-      <!-- 🔥 NOVO SELECT DEP/TMA -->
+      <!-- 🔹 SELECT DEP/TMA/RCF -->
       <select id="tipoInput" class="btn" style="padding:8px;">
         <option value="dep">DEP</option>
         <option value="tma">TMA</option>
+        <option value="rcf">RCF</option>
       </select>
 
       <input type="date" id="dataInput" class="btn" style="padding:8px;">
-
       <button class="btn primary" id="btnGerar">Gerar</button>
-
       <button class="btn" id="btnCopyPlain">Copiar</button>
       <button class="btn" id="btnOpenWa">WhatsApp</button>
       <button class="btn ghost" id="btnDownload">Baixar .txt</button>
@@ -62,11 +61,9 @@
   </div>
 </div>
 
-
 <script>
-
   async function gerar() {
-    const tipo = document.getElementById("tipoInput").value; // dep ou tma
+    const tipo = document.getElementById("tipoInput").value; // dep, tma ou rcf
     const data = document.getElementById("dataInput").value;
 
     if (!data) {
@@ -75,14 +72,19 @@
     }
 
     let url = "";
+    const titulo = document.getElementById("titulo");
 
     if (tipo === "dep") {
       url = `https://feedback-81uq.onrender.com/feedback?data=${data}`;
-      document.getElementById("titulo").innerText = "Gerador de Feedback DEP";
+      titulo.innerText = "Gerador de Feedback DEP";
     }
-    else {
+    else if (tipo === "tma") {
       url = `https://feedback-81uq.onrender.com/tma?data=${data}`;
-      document.getElementById("titulo").innerText = "Gerador de Análise TMA";
+      titulo.innerText = "Gerador de Análise TMA";
+    }
+    else if (tipo === "rcf") {
+      url = `https://feedback-81uq.onrender.com/rcf?data=${data}`;
+      titulo.innerText = "Gerador de Feedback RCF";
     }
 
     const ta = document.getElementById("feedback_raw");
@@ -92,28 +94,23 @@
     preview.innerHTML = "Carregando...";
 
     try {
-    const res = await fetch(url);
+      const res = await fetch(url);
 
-    // tenta JSON → se falhar, usa texto
-    let result;
-    try {
-      result = await res.json();
-    } catch {
-      result = await res.text();
-    }
+      // tenta JSON → se falhar, usa texto
+      let result;
+      try { result = await res.json(); } 
+      catch { result = await res.text(); }
 
-    let feedback =
-      typeof result === "string"
-        ? result
-        : result.feedback || result.texto || "❌ Erro na API";
+      let feedback =
+        typeof result === "string"
+          ? result
+          : result.feedback || result.texto || "❌ Erro na API";
 
-
-    ta.value = feedback;
-    preview.innerHTML = feedback.replace(/\n/g, "<br>");
-
-
+      ta.value = feedback;
+      preview.innerHTML = feedback.replace(/\n/g, "<br>");
     } catch (e) {
       ta.value = "❌ Erro ao conectar com a API";
+      preview.innerHTML = ta.value;
     }
   }
 
@@ -141,7 +138,6 @@
     document.getElementById("feedback_raw").value = "";
     document.getElementById("preview").innerHTML = "";
   };
-
 </script>
 
 </body>
