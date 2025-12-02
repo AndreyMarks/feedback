@@ -1,12 +1,10 @@
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Optional
 
 def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
     """
-    Gera feedback operacional com mesma lógica do Colab:
-    - Observações aparecem apenas no grupo total do desvio
-    - Agrupamento por voo/destino mostra apenas " - "
+    Versão DEFINITIVA com nome exato da coluna de observações.
+    100% igual ao funcionamento do Colab.
     """
 
     # ---------------------- DATA ----------------------
@@ -14,11 +12,8 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
         data_extracao = datetime.now() - timedelta(days=3)
     data_extracao = pd.to_datetime(data_extracao).strftime("%d/%m/%Y")
 
-    # Nome exato da coluna de observações
-    col_obs = (
-        "OBSERVAÇÕES\n"
-        "(Descrever desvios, ex: número de chamado, ocorrências e etc...)"
-    )
+    # ---------------------- COLUNA DE OBSERVAÇÕES ----------------------
+    col_obs = "OBSERVAÇÕES\n(Descrever desvios, ex: número de chamado, ocorrências e etc...)"
 
     feedback = f"📌 Feedback Operacional {{{dep}}} – {data_extracao}\n\n"
 
@@ -60,7 +55,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
     )
 
     # ==========================================================
-    # FUNÇÃO DE AGRUPAR OBSERVAÇÕES (idêntica ao Colab)
+    # OBSERVAÇÕES — LÓGICA DO COLAB
     # ==========================================================
     def obs_agrupadas(df_grupo):
         if col_obs not in df_grupo.columns:
@@ -72,7 +67,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
         return " --> " + " | ".join(obs.unique())
 
     # ==========================================================
-    # TURNOS — Mesma lógica do Colab
+    # TURNOS — MESMA LÓGICA DO COLAB
     # ==========================================================
     if "TURNO" in df.columns:
         ordem_turnos = ["MANHÃ", "TARDE", "MADRUGADA"]
@@ -94,9 +89,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
                     feedback += f"{i}️⃣ {dest} → **{qtd} guias**\n"
                 feedback += "\n"
 
-            # --------------------------------------------------
-            # AQUI começa o bloco dos desvios (igual ao Colab)
-            # --------------------------------------------------
+            # Bloco dos desvios
             desvios = [
                 ("ERRO DE MANIFESTO", "⚠️", "Erro de manifesto"),
                 ("VOADO SEM MAN", "📄", "Guias sem manifesto"),
@@ -110,13 +103,12 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
                 if grupo.empty:
                     continue
 
-                # 🔥 Observações aparecem APENAS AQUI (no total)
+                # Observações aqui (aparecem 1 vez)
                 obs_txt = obs_agrupadas(grupo)
                 feedback += f"{emoji} {titulo} ({len(grupo)} guias): {obs_txt}\n"
 
-                # 🔥 Agrupamento por voo/destino SEM observações (igual ao Colab)
-                grupos_voo = grupo.groupby(["VOO", "DESTINO"])
-                for (voo, dest), g in grupos_voo:
+                # Agrupamento por voo/destino sem observar — apenas "-"
+                for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
                     feedback += f"✈️ {voo} → {dest} → **{len(g)} guias**  -\n"
 
                 feedback += "\n"
