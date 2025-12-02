@@ -5,12 +5,15 @@ from typing import Optional
 def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
     """
     Gera feedback operacional detalhado, agrupando por voo, destino e turno,
-    incluindo top motivos e observações.
+    incluindo top motivos e observações (corrigido com lógica do 1º código).
     """
+
+    # ---------------------- DATA ----------------------
     if data_extracao is None:
         data_extracao = datetime.now() - timedelta(days=3)
     data_extracao = pd.to_datetime(data_extracao).strftime("%d/%m/%Y")
 
+    # Nome exato da coluna
     col_obs = (
         "OBSERVAÇÕES\n"
         "(Descrever desvios, ex: número de chamado, ocorrências e etc...)"
@@ -23,6 +26,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
 
     df["DETALHE DESVIO"] = df["DETALHE DESVIO"].astype(str)
 
+    # ---------------------- TOP DESVIOS ----------------------
     top4_desvios = df["DETALHE DESVIO"].str.upper().value_counts().head(4)
     lista_top = ", ".join([f"\"{d}\"" for d in top4_desvios.index])
     total_guias = len(df)
@@ -37,6 +41,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
         f"{lista_top}.\n\n"
     )
 
+    # ---------------------- TOP VOOS ----------------------
     if "VOO" in df.columns:
         top_voos = df["VOO"].value_counts().head(2)
         feedback += "✈️ *Voos mais impactados do dia:*\n"
@@ -44,6 +49,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
             feedback += f"- {voo}: **{qtd} guias**\n"
         feedback += "\n"
 
+    # ---------------------- RESUMO GERAL ----------------------
     feedback += (
         "👉 *Resumo geral de inconsistências:*\n"
         f"- ❗ **Erro de manifesto:** {total_erro_manifesto} guias\n"
@@ -52,16 +58,23 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
         f"- ⛔ **Perdas de DEP:** {total_perca_dep} guias\n\n"
     )
 
-    # ---------------------- Detalhamento por turno ----------------------
+    # ==========================================================
+    # FUNÇÃO DE AGRUPAMENTO DAS OBSERVAÇÕES  (igual ao 1º código)
+    # ==========================================================
+    def obs_agrupadas(df_grupo):
+        if col_obs not in df_grupo.columns:
+            return ""
+        obs = df_grupo[col_obs].astype(str).str.strip()
+        obs = obs[~obs.str.lower().isin(["nan", "", "none"])]
+        if obs.empty:
+            return ""
+        return " --> " + " | ".join(obs.unique())
+
+    # ==========================================================
+    #         DETALHAMENTO POR TURNO (COM OBSERVAÇÕES)
+    # ==========================================================
     if "TURNO" in df.columns:
         ordem_turnos = ["MANHÃ", "TARDE", "MADRUGADA"]
-
-        def obs_agrupadas(df_grupo):
-            if col_obs not in df_grupo.columns:
-                return ""
-            obs = df_grupo[col_obs].astype(str).str.strip()
-            obs = obs[~obs.str.lower().isin(["nan", "", "none"])]
-            return "" if obs.empty else " --> " + " | ".join(obs.unique())
 
         for turno in ordem_turnos:
             bloco = df[df["TURNO"] == turno]
@@ -80,19 +93,25 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
                     feedback += f"{i}️⃣ {dest} → **{qnt} guias**\n"
                 feedback += "\n"
 
-            # Detalhamento por tipo de desvio
-            for tipo, emoji, titulo in [
+            # ---------------------- DESVIOS ----------------------
+            desvios_config = [
                 ("ERRO DE MANIFESTO", "⚠️", "Erro de manifesto"),
                 ("VOADO SEM MAN", "📄", "Guias sem manifesto"),
                 ("ERRO SCORECARD", "📉", "Erro de Scorecard"),
                 ("PERCA", "⛔", "Perda de DEP"),
-            ]:
+            ]
+
+            for tipo, emoji, titulo in desvios_config:
                 grupo = bloco[bloco["DETALHE DESVIO"].str.contains(tipo, case=False, na=False)]
+
                 if not grupo.empty:
                     feedback += f"{emoji} *{titulo} ({len(grupo)} guia(s))*\n"
-                    if "VOO" in grupo.columns and "DESTINO" in grupo.columns:
-                        for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
-                            feedback += f"{voo} → {dest} → **{len(g)} guias** {obs_agrupadas(g)}\n"
+
+                    # Agrupamento por voo + destino
+                    for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
+                        obs = obs_agrupadas(g)
+                        feedback += f"{voo} → {dest} → **{len(g)} guias**{obs}\n"
+
                     feedback += "\n"
 
     return feedback
