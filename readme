@@ -11,3 +11,8 @@ python -m pip install fastapi uvicorn pandas gspread google-auth
 & "C:\Users\andre\anaconda3\python.exe" -m venv venv
 
 uvicorn main:app --reload
+
+
+
+
+** crendls... necessario **

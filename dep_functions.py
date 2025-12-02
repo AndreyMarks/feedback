@@ -3,13 +3,12 @@ from datetime import datetime, timedelta
 
 def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
     """
-    Versão DEFINITIVA com nome exato da coluna de observações.
-    100% igual ao funcionamento do Colab — agora também no Render.
+    Feedback operacional compatível com Colab, Render e DEP.
+    Detecta automaticamente a coluna de observações e mantém lógica completa de resumo.
     """
 
     # ======================================================
-    # 🔥 NORMALIZAÇÃO UNIVERSAL (Render / CSV / Sheets)
-    # Garante que "", " ", None, NaN, "nan" virem "-"
+    # 🔥 NORMALIZAÇÃO UNIVERSAL
     # ======================================================
     df = df.replace([None, "None", "nan", "NaN"], "")
     df = df.applymap(lambda x: "-" if str(x).strip() == "" else x)
@@ -19,15 +18,32 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
         data_extracao = datetime.now() - timedelta(days=2)
     data_extracao = pd.to_datetime(data_extracao).strftime("%d/%m/%Y")
 
-    # ---------------------- COLUNA DE OBSERVAÇÕES ----------------------
-    col_obs = "OBSERVAÇÕES\n(Descrever desvios, ex: número de chamado, ocorrências e etc...)"
-
     feedback = f"📌 Feedback Operacional {{{dep}}} – {data_extracao}\n\n"
 
     if "DETALHE DESVIO" not in df.columns:
         return feedback + "(sem coluna DETALHE DESVIO)\n"
 
     df["DETALHE DESVIO"] = df["DETALHE DESVIO"].astype(str)
+
+    # ---------------------- DETECTAR COLUNA DE OBSERVAÇÕES ----------------------
+    col_obs = None
+    for c in df.columns:
+        if "OBSERVAÇ" in c.upper() or "OBSERVAC" in c.upper():
+            col_obs = c
+            break
+    if col_obs is None:
+        df["OBSERVACOES_TEMP"] = "-"
+        col_obs = "OBSERVACOES_TEMP"
+
+    # ======================================================
+    # FUNÇÃO PARA AGRUPAR OBSERVAÇÕES
+    # ======================================================
+    def obs_agrupadas(df_grupo):
+        obs = df_grupo[col_obs].astype(str).str.strip()
+        obs = obs[~obs.isin(["-", "", "nan", "None"])]
+        if obs.empty:
+            return " - "
+        return " --> " + " | ".join(obs.unique())
 
     # ---------------------- TOP DESVIOS ----------------------
     top4_desvios = df["DETALHE DESVIO"].str.upper().value_counts().head(4)
@@ -61,21 +77,7 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
         f"- ⛔ **Perdas de DEP:** {total_perca_dep} guias\n\n"
     )
 
-    # ==========================================================
-    # OBSERVAÇÕES — LÓGICA DO COLAB
-    # ==========================================================
-    def obs_agrupadas(df_grupo):
-        if col_obs not in df_grupo.columns:
-            return " - "
-        obs = df_grupo[col_obs].astype(str).str.strip()
-        obs = obs[~obs.isin(["-", "", "nan", "None"])]
-        if obs.empty:
-            return " - "
-        return " --> " + " | ".join(obs.unique())
-
-    # ==========================================================
-    # TURNOS — MESMA LÓGICA DO COLAB
-    # ==========================================================
+    # ---------------------- RESUMO POR TURNO ----------------------
     if "TURNO" in df.columns:
         ordem_turnos = ["MANHÃ", "TARDE", "MADRUGADA"]
 
@@ -106,17 +108,17 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
 
             for termo, emoji, titulo in desvios:
                 grupo = bloco[bloco["DETALHE DESVIO"].str.contains(termo, case=False, na=False)]
-
                 if grupo.empty:
                     continue
 
-                # Observações agrupadas (agora FUNCIONA no Render)
+                # Observações agrupadas
                 obs_txt = obs_agrupadas(grupo)
                 feedback += f"{emoji} {titulo} ({len(grupo)} guias): {obs_txt}\n"
 
                 # Agrupamento por voo/destino
-                for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
-                    feedback += f"✈️ {voo} → {dest} → **{len(g)} guias**  -\n"
+                if "VOO" in grupo.columns and "DESTINO" in grupo.columns:
+                    for (voo, dest), g in grupo.groupby(["VOO", "DESTINO"]):
+                        feedback += f"✈️ {voo} → {dest} → **{len(g)} guias**  -\n"
 
                 feedback += "\n"
 
