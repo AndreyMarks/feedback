@@ -44,8 +44,10 @@ def gerar_feedback_operacional(df: pd.DataFrame, dep="DEP", data_extracao=None):
 
     # ---------------------- CHAMADOS ----------------------
     chamados = df[col_obs].astype(str).str.strip()
-    # Pegar todos que começam com PCNLAT
+    # Filtra apenas os que começam com PCNLAT
     chamados = chamados[chamados.str.upper().str.startswith("PCNLAT")]
+    # Remove duplicatas
+    chamados = chamados.drop_duplicates()
     if not chamados.empty:
         feedback += "📞 CHAMADOS:\n"
         for c in chamados:
