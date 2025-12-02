@@ -34,7 +34,7 @@ def carregar_rcf_sheet(sheet_name: str, service_account_file: str, sheet_key: st
         _cache_rcf["resultados"] = {}  # resetar cache de resultados
     return _cache_rcf["df"]
 
-def analisar_rcf_por_data(df: pd.DataFrame, data_filtrar: str):
+def gerar_feedback_rcf(df: pd.DataFrame, data_filtrar: str):
     """
     Retorna feedback do RCF para uma data específica.
     Cache de resultados por data.
