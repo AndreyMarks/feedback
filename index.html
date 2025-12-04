@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Gerador de Feedback</title>
+<title>Feedback Operacional - GRU</title>
 
 <style>
   :root{
@@ -32,8 +32,8 @@
 
     <header>
       <div style="flex:1">
-        <h1 id="titulo">Gerador de Feedback DEP/TMA/RCF</h1>
-        <p>Selecione o tipo, escolha a data e gere automaticamente.</p>
+        <h1 id="titulo">Feedback DEP/TMA/RCF/FAB/DFR</h1>
+        <p>Selecione o tipo, escolha a data e gere os dados.</p>
       </div>
     </header>
 
@@ -76,15 +76,15 @@
 
     if (tipo === "dep") {
       url = `https://feedback-81uq.onrender.com/feedback?data=${data}`;
-      titulo.innerText = "Gerador de Feedback DEP";
+      titulo.innerText = "Análise DEP";
     }
     else if (tipo === "tma") {
       url = `https://feedback-81uq.onrender.com/tma?data=${data}`;
-      titulo.innerText = "Gerador de Análise TMA";
+      titulo.innerText = "Análise TMA";
     }
     else if (tipo === "rcf") {
       url = `https://feedback-81uq.onrender.com/rcf?data=${data}`;
-      titulo.innerText = "Gerador de Feedback RCF";
+      titulo.innerText = "Análise RCF";
     }
 
     const ta = document.getElementById("feedback_raw");
