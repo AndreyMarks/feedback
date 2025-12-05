@@ -7,7 +7,8 @@ DESCONSIDERAR = [
     "DUPLICIDADE",
     "SENHA DOCA COMPUTADA COMO LOJA",
     "BASE NÃO CORRESPONDE",
-    "QUEDA SISTEMA"
+    "QUEDA SISTEMA",
+    "PESO >30KGS NÃO IDENTIFICADO"
 ]
 
 def _normalizar_data_str_para_ddmmaaaa(valor: str) -> Optional[str]:
